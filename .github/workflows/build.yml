@@ -22,11 +22,45 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
       - name: Check Android SDK
         run: sdkmanager --version
-      - name: Build APK
-        run: gradle --no-daemon :app:assembleDebug
+      - name: Build APK (optional fixed signing)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KOTO_KEYSTORE_BASE64 }}
+          KOTO_STORE_PASSWORD: ${{ secrets.KOTO_STORE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$KEYSTORE_BASE64" || -n "$KOTO_STORE_PASSWORD" ]]; then
+            if [[ -z "$KEYSTORE_BASE64" || -z "$KOTO_STORE_PASSWORD" ]]; then
+              echo 'Both signing secrets must be configured.'; exit 1
+            fi
+            export KOTO_KEYSTORE="$RUNNER_TEMP/kotonoha.p12"
+            umask 077
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KOTO_KEYSTORE"
+            trap 'rm -f "$KOTO_KEYSTORE"' EXIT
+          else
+            echo 'Building with temporary debug key. Future upgrades may require reinstall.'
+          fi
+          gradle --no-daemon :app:assembleDebug
+      - name: Verify APK version
+        id: apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          aapt="$sdk/build-tools/34.0.0/aapt"
+          test -x "$aapt"
+          badging=$("$aapt" dump badging "$apk")
+          package=$(printf '%s\n' "$badging" | sed -n '/^package: /p' | head -n 1)
+          version=$(printf '%s\n' "$package" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
+          expected=$(sed -n "s/^[[:space:]]*versionName[[:space:]]*'\([^']*\)'.*/\1/p" app/build.gradle | head -n 1)
+          printf 'Commit: %s\nAPK: %s\nExpected version: %s\n' "$GITHUB_SHA" "$package" "$expected"
+          [[ "$version" =~ ^[a-zA-Z0-9._-]+$ && "$version" == "$expected" ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          printf 'APK version: **%s**\n\nCommit: `%s`\n' "$version" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: kotonoha-android-v0.5
+          name: kotonoha-android-${{ steps.apk.outputs.version }}
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
