@@ -1,0 +1,7 @@
+ことのは v0.6（正式版前測）
+1. 更新既有 GitHub Pages repo，覆蓋 ZIP 根目錄所有檔案。瀏覽器擴充功能保持 v0.3，手機 v0.5 仍可用。
+2. 翻譯模式預設「僅已有」以避免自動扣費；「關閉」不顯示中文也不啟動翻譯；「僅已有」讀本機/雲端；「自動 AI」對新歌翻譯。已發出的請求可能仍計費。手動翻譯/AI 校讀是明確付費操作。
+3. 在既有、正常運作的 kotonoha-ai Worker（不是前端 Worker）貼上 v0.6 後端程式，Deploy。原有四項變數不變。Cloudflare 建立 KV namespace kotonoha-lyrics，Worker Settings > Bindings > Add binding > KV namespace，名稱 LYRICS_CACHE，選擇剛建立的 namespace，Deploy。診斷頁應顯示 version 0.6.0 及 checks.cache true。
+4. 在電腦與手機確認同一 Worker 網址與私人密碼，儲存設定。電腦與手機各按一次「同步舊的 AI 翻譯快取到雲端」，這會傳送已有原文與翻譯至私人 Worker，無 OpenAI 呼叫。只同步完整 AI 快取，不含手動翻譯、假名修正或時間軸。完全相同的有序原文才共用翻譯；KV 跨地區生效可能延遲，兩台同時請求新歌仍可能各扣一次。
+5. 假名修正：點「修正假名」，點選歌詞行，逐行以 漢字=ひらがな 輸入；需涵蓋該行所有漢字。留空恢復字典讀音。「AI 校讀假名」為獨立付費操作，會用整首上下文推測，並驗證原文片段，保留既有修正；不保證特殊唱法完全正確。
+6. Android 上方原生工具列須更新 APK 才能移除。另有 patch ZIP，依原路徑覆蓋 Android repo 兩個檔案後用現有成功的 workflow 重新編譯。先同步快取再嘗試安裝新版。GitHub Actions debug APK 可能每次簽章不同，無法覆蓋安裝；不要直接卸載舊版，卸載會清除手機本機資料。若發生簽章問題，先保留舊版，或確定已備妥資料後才重新安裝。新版未真機編譯測試。

@@ -1,25 +1,42 @@
-# ことのは Android v0.5（第一版）
+# ことのは Kotonoha v0.3
 
-這是 Android 原生輔助 App 原始碼，**不是 APK**。Android 9 以上。使用你既有的 `https://darkcloud120.github.io/kotonoha/` 網站與原本的 AI Worker，不需修改網站、重新部署 Worker 或安裝電腦擴充功能。若網站實際路徑不同，請調整 MainActivity.java 的 SITE、HOST 以及路徑檢查。
+個人用日文歌詞閱讀器。純靜態 GitHub Pages 網站；Chrome / Edge 擴充功能提供電腦 YouTube Music 自動同步。
 
-## 用 GitHub 產生 APK（不需要 Android Studio）
-1. 新建獨立的 GitHub repository，例如 `kotonoha-android`，可選 Private。不要上傳到原本的歌詞網站 repository。
-2. 解壓縮本 ZIP，把 `app` 資料夾、`build.gradle`、`settings.gradle`、`README.md` 上傳到 repository 根目錄，Commit changes。確認 app/src/main/... 的階層完整。`.gitignore` 可選擇上傳。
-3. ZIP 中的 `.github/workflows/build.yml` 也需要上傳。若瀏覽器看不到隱藏的 `.github` 資料夾，可在 GitHub 選 Add file → Create new file，檔名輸入 `.github/workflows/build.yml`，把 ZIP 內該檔案的內容複製貼上並 Commit。另附的 build-workflow.txt 內容完全相同。
-4. 點 Actions → Build Kotonoha Android APK → Run workflow → 選預設分支 → Run workflow。若沒有工作流程，確認上一步檔名正確且已提交至預設分支。若 Actions 尚未開啟，依畫面啟用。
-5. 工作流程顯示綠勾後，點開該次執行紀錄，在底部 Artifacts 下載 kotonoha-android-v0.5。解壓後得到 app-debug.apk。
-6. 把 APK 傳到自己的 Android 手機，開啟安裝。Android 可能要求允許目前的檔案管理器安裝未知來源的應用程式。只安裝自己的建置成果，完成後可關閉該安裝權限。
+## 更新網站
+1. 將網站 ZIP 解壓縮，將 index.html、app.js、sync.js（新增）、style.css、kana-worker.js、README.md 上傳到原 repository 根目錄，覆蓋同名檔案。保留原本的 .nojekyll。
+2. 不必重建 Pages。Commit changes，部署完成後 Ctrl+F5 確認左上顯示 v0.3。
+3. optional-ai 仍為可選的私人 Worker 後端，無須上傳 Pages；不要公開 API 金鑰。
 
-## 手機使用
-1. 開啟ことのは，點頂端「授權同步」，在 Android 的通知存取設定允許ことのは・音樂同步。Android 13 以上某些手機可能限制側載 App 的通知權限，若系統提示「受限制的設定」，請先核對來源是自己的 APK；在系統設定 → 應用程式 → ことのは → 右上角 ⋮（若有）→ 允許受限制的設定，再回 App 授權。各廠牌介面不同，若仍被封鎖請回報畫面。
-2. 點頂端 YT Music 或自行開啟 YouTube Music App 播歌，切回ことのは。確認網站的「跟隨 YouTube Music」勾選。
-3. 測試歌名、歌手、假名、同步進度、切歌、暫停與快轉。時間戳仍依歌詞來源，翻唱需校正。
-4. 若要 AI 翻譯，網站內 AI 設定需在手機輸入已成功使用的新 Worker 網址與 ACCESS_TOKEN，勿輸入 OpenAI API key。先單首測試，再開自動翻譯。
+## 安裝電腦擴充功能
+1. 將另附的 kotonoha-extension-v0.3.zip 解壓縮到電腦固定資料夾，裡面有 manifest.json。不要在 ZIP 裡直接操作，也不要上傳 GitHub Pages。
+2. Chrome 輸入 chrome://extensions/；Edge 輸入 edge://extensions/。開啟開發人員模式，按「載入未封裝項目」，選擇 manifest.json 所在的資料夾。
+3. 點瀏覽器工具列拼圖圖示，打開 Kotonoha · YT Music Sync（可釘選）。貼上你已部署的完整 GitHub Pages 網址（https://你的帳號.github.io/kotonoha/），按儲存並授權。同意該 github.io 網站權限。
+4. 同一個瀏覽器/使用者設定檔中開啟歌詞頁與 https://music.youtube.com/，重新整理兩頁，播放歌曲。網站「跟隨 YouTube Music」需勾選。
+5. 歌詞網站顯示已連線、歌名及歌手。測試播放、暫停、拖曳時間、下一首、播放清單自然換歌。擴充功能不接管播放器；在 YouTube Music 操作。兩個分頁需維持開啟。
 
-## 隱私、限制與測試狀態
-- Android 通知存取權限本身範圍較廣，但此 App 的通知服務沒有讀取或儲存通知內容。只在前景輪詢 YouTube Music 的 MediaSession，不錄音、不讀訊息、不要求無障礙權限；歌曲資訊透過本機 WebView 傳給你的既有網站。原網站的外部歌詞搜尋及 AI 翻譯仍會依設定連線。
-- 網站開在 App 內的 WebView，和手機 Chrome、電腦的 localStorage / sessionStorage 不共用。翻譯快取和時間軸設定需要另存，密碼也需重新設定；跨裝置同步尚未做。
-- 目前僅 Android 原生 YouTube Music App，不支援 iOS / Spotify 或手機瀏覽器播放。要能背景播放，仍須符合 YouTube Music 本身的帳號、方案及播放限制。若 MediaSession 不提供完整資訊，進度可能無法準確同步。尚未可靠識別廣告。
-- App 保持前景時同步並防止螢幕自動休眠；離開或鎖屏會停止輪詢，回來時重新讀取狀態。
-- GitHub Actions 產生的是 debug APK；各次建置的預設簽章可能不同，後續更新若簽章不相容就得卸載重裝（本機資料會消失）。正式版應配置固定私有簽章。
-- 此環境無 Android SDK/Gradle 且無法連線下載，因此未編譯 APK、未在手機實測。GitHub Actions 成功建置及真機測試後才能確認功能。
+## 翻唱與搜尋
+- 自動搜尋 LRCLIB：先歌名+歌手，再歌名；自動選擇最接近的同名結果。不同版本可能誤配，使用搜尋結果手動選擇，或手動搜尋原唱歌手，再點選歌詞。會記住目前播放版本對應的歌詞。無歌詞時可自行匯入 LRC 或純文字。
+- 翻唱可能有不同前奏、速度和編曲。歌詞原文可沿用，時間軸需校準。版本依播放歌曲及影片 ID 建立；偏移、倍率、LRC 修改保存在此瀏覽器。正偏移表示提早顯示，倍率大於 1 表示時間軸更快。純文字無法自動逐句高亮，須補時間戳。
+- 選取的歌詞、版本與翻譯保存在目前瀏覽器 localStorage；不會跨裝置同步。v0.2 翻譯鍵沿用。舊的手動版本可在版本欄輸入原名稱切換並儲存，讓自動模式記住。
+- 預設假名開啟，第一次下載 Kuromoji 字典較慢；特殊唱法可能不正確。翻譯沿用 v0.2 的手動匯入與選用 AI Worker，並非預設自動翻譯。
+
+## 排錯
+- 等待連線：確認已安裝擴充、網站網址完全正確、兩頁重新整理、播放網頁版 YouTube Music 而不是其他 App。同時開多個 YT Music 分頁可能選到另一個播放來源，測試時建議只留一個。
+- 已連線但沒有歌詞：確認歌名、歌手、搜尋狀態，改搜原唱或手動匯入；API 曲庫與連線受第三方限制。
+- 有歌詞但不同步：確認有 LRC，並測試原唱；翻唱用偏移或版本設定校準。
+- 不想同步：取消勾選跟隨 YouTube Music，回到手動模式。網站不會操作實際音樂，也不會在手機自動偵測。
+- 擴充只讀取 music.youtube.com 的播放資訊，透過本機瀏覽器傳給你指定的 GitHub Pages 網頁；不需額外伺服器。網站會將歌名/歌手送 LRCLIB 搜尋。選用 AI 翻譯才會向設定的 Worker 傳送歌詞。
+
+測試：JavaScript 語法檢查及模擬 DOM/歌詞 API 測試已通過；環境限制瀏覽器導航，尚未驗證真實 YouTube Music DOM、權限流程與實際 API 連線。初版擴充可能需依 YouTube Music 改版調整。
+
+## v0.3.1 假名修正
+覆蓋網站 index.html、app.js、style.css、kana-worker.js（sync.js 保持原版）。不需更新擴充功能。修正字典 URL 組合，加入備用 CDN、下載進度及重新標註。中文勾選只控制已有翻譯；尚未設定 AI 後端時，使用手動匯入或 optional-ai/SETUP.md 設定。
+
+## v0.3.2 多來源搜尋（包含 v0.3.1 假名修正）
+覆蓋 ZIP 內 6 個網站程式檔及 README.md，不需更新 v0.3 擴充功能。先查 LRCLIB，查不到同名同步歌詞時改查 LiriQo，再視情況查 lyrics.ovh 純文字。搜尋會送歌曲名與歌手到相應第三方 API；不送帳號、音訊或 API 金鑰。來源會顯示在結果與播放狀態。教室に青及 W/X/Y 有原唱名稱提示（只包含歌曲資訊，沒有內建歌詞）。若都沒有，使用外部歌詞連結，或自行匯入有權使用的歌詞；在自動模式匯入會記住對應的播放版本。純文字無時間戳，不會自動逐句高亮。翻唱仍可能需要校正時間軸。新來源及字典的真實網路連線尚未實測；語法與模擬測試已通過。
+
+## v0.4 自動 AI 翻譯
+覆蓋新 ZIP 中的八個網站檔案（含新增 translate.js），不需更新擴充功能。翻譯後端另外下載，不需上傳 GitHub。請見獨立後端 ZIP 的 SETUP.md。新歌載入後防抖 1.5 秒再翻譯；已有任何手動翻譯時不自動覆蓋。AI 快取以完整逐句原文為鍵，可跨原唱與翻唱重用完全相同的歌詞，不受時間戳影響。切歌時正在處理的歌曲可完成並存入快取，不會覆蓋新歌；同時最多兩個請求，失敗需手動重試。預設不啟用付費自動翻譯。真實 Cloudflare / OpenAI 帳號部署及翻譯品質需要使用者測試。手機同步尚未實作。
+
+## v0.6 更新
+請先閱讀 UPDATE-v0.6.txt；其中包含新的翻譯模式、雲端快取與手機更新流程。
