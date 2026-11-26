@@ -134,8 +134,8 @@ public final class MainActivity extends Activity {
         // Reuse the existing v0.4 page; no privileged JS bridge or new server.
         web.evaluateJavascript("(()=>{if(location.origin!=="+JSONObject.quote("https://"+HOST)+"||!['/kotonoha/','/kotonoha/index.html','/kotonoha'].includes(location.pathname))return;"
             +"if(document.getElementById('android-style'))return;const s=document.createElement('style');s.id='android-style';s.textContent="
-            +JSONObject.quote("header{padding-right:56px!important} @media(max-width:720px){aside>.panel:nth-child(2){order:2} header{padding-top:10px} }")
-            +";document.head.append(s);const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android v0.6';})()",null);
+            +JSONObject.quote("header{padding-right:56px!important} body.focus-mode main{padding-top:48px} body.focus-mode .player{height:calc(100dvh - 56px)} @media(max-width:720px){aside>.panel:nth-child(2){order:2} header{padding-top:10px} }")
+            +";document.head.append(s);const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android 1.0 RC1';})()",null);
     }
     private void openMusic() {
         Intent intent=getPackageManager().getLaunchIntentForPackage(MUSIC);
@@ -180,7 +180,7 @@ public final class MainActivity extends Activity {
             if(duration>0)position=Math.min(position,duration);
             status.setText((isPlaying?"播放中 · ":"暫停 / 等待 · ")+title+(raw<0?"（系統未提供進度）":""));
             if(!ready||!trusted(web.getUrl()))return;
-            JSONObject payload=new JSONObject();payload.put("title",title);payload.put("artist",artist);
+            JSONObject payload=new JSONObject();payload.put("source","android");payload.put("title",title);payload.put("artist",artist);
             payload.put("videoId",str(m,MediaMetadata.METADATA_KEY_MEDIA_ID));
             payload.put("position",position/1000.0);payload.put("duration",duration/1000.0);
             payload.put("playing",isPlaying && raw>=0);payload.put("speed",speed);
