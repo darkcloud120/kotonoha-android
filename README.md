@@ -1,42 +1,30 @@
-# ことのは Kotonoha v0.3
+# ことのは Android 1.0 RC1
 
-個人用日文歌詞閱讀器。純靜態 GitHub Pages 網站；Chrome / Edge 擴充功能提供電腦 YouTube Music 自動同步。
+Android 9+，沿用原本 https://darkcloud120.github.io/kotonoha/ 網站及 YT Music 系統播放資訊。一般 YouTube 偵測是電腦擴充新功能，Android 保持 YT Music。新版包含 v0.6 小選單、新圖示與純歌詞模式留白。
 
-## 更新網站
-1. 將網站 ZIP 解壓縮，將 index.html、app.js、sync.js（新增）、style.css、kana-worker.js、README.md 上傳到原 repository 根目錄，覆蓋同名檔案。保留原本的 .nojekyll。
-2. 不必重建 Pages。Commit changes，部署完成後 Ctrl+F5 確認左上顯示 v0.3。
-3. optional-ai 仍為可選的私人 Worker 後端，無須上傳 Pages；不要公開 API 金鑰。
+## 更新（不是 APK）
+將 ZIP 解壓縮，把 app/ 整個拖曳到原本 kotonoha-android repository 根目錄的 Upload files 區域，保留完整路徑。原本根目錄 build.gradle 和 settings.gradle 可保持不變。若要固定簽章，另將 `.github/workflows/build.yml` 用網頁編輯器更新（內容也有獨立 TXT），原本成功的 workflow 仍可用來產生臨時 debug APK。
 
-## 安裝電腦擴充功能
-1. 將另附的 kotonoha-extension-v0.3.zip 解壓縮到電腦固定資料夾，裡面有 manifest.json。不要在 ZIP 裡直接操作，也不要上傳 GitHub Pages。
-2. Chrome 輸入 chrome://extensions/；Edge 輸入 edge://extensions/。開啟開發人員模式，按「載入未封裝項目」，選擇 manifest.json 所在的資料夾。
-3. 點瀏覽器工具列拼圖圖示，打開 Kotonoha · YT Music Sync（可釘選）。貼上你已部署的完整 GitHub Pages 網址（https://你的帳號.github.io/kotonoha/），按儲存並授權。同意該 github.io 網站權限。
-4. 同一個瀏覽器/使用者設定檔中開啟歌詞頁與 https://music.youtube.com/，重新整理兩頁，播放歌曲。網站「跟隨 YouTube Music」需勾選。
-5. 歌詞網站顯示已連線、歌名及歌手。測試播放、暫停、拖曳時間、下一首、播放清單自然換歌。擴充功能不接管播放器；在 YouTube Music 操作。兩個分頁需維持開啟。
+## 固定 APK 簽章（推薦在分享前完成，可選）
+Android 更新需同一簽章。之前 GitHub Actions 產生的臨時 debug 金鑰可能已丟失，新的固定簽章可能需要最後一次卸載重裝。**不要先卸載**；先確定手機既有 AI 翻譯已同步到雲端，重要本機時間軸／收藏／假名資料另做備份（Android WebView 下載可能不支援）。
 
-## 翻唱與搜尋
-- 自動搜尋 LRCLIB：先歌名+歌手，再歌名；自動選擇最接近的同名結果。不同版本可能誤配，使用搜尋結果手動選擇，或手動搜尋原唱歌手，再點選歌詞。會記住目前播放版本對應的歌詞。無歌詞時可自行匯入 LRC 或純文字。
-- 翻唱可能有不同前奏、速度和編曲。歌詞原文可沿用，時間軸需校準。版本依播放歌曲及影片 ID 建立；偏移、倍率、LRC 修改保存在此瀏覽器。正偏移表示提早顯示，倍率大於 1 表示時間軸更快。純文字無法自動逐句高亮，須補時間戳。
-- 選取的歌詞、版本與翻譯保存在目前瀏覽器 localStorage；不會跨裝置同步。v0.2 翻譯鍵沿用。舊的手動版本可在版本欄輸入原名稱切換並儲存，讓自動模式記住。
-- 預設假名開啟，第一次下載 Kuromoji 字典較慢；特殊唱法可能不正確。翻譯沿用 v0.2 的手動匯入與選用 AI Worker，並非預設自動翻譯。
+1. 在自己的電腦安裝 JDK 17（若已安裝則不用）。開 PowerShell，進到一個不會上傳 GitHub 的私人資料夾。
+2. 生成固定 PKCS12 金鑰；密碼自己設定，不要傳給別人：
 
-## 排錯
-- 等待連線：確認已安裝擴充、網站網址完全正確、兩頁重新整理、播放網頁版 YouTube Music 而不是其他 App。同時開多個 YT Music 分頁可能選到另一個播放來源，測試時建議只留一個。
-- 已連線但沒有歌詞：確認歌名、歌手、搜尋狀態，改搜原唱或手動匯入；API 曲庫與連線受第三方限制。
-- 有歌詞但不同步：確認有 LRC，並測試原唱；翻唱用偏移或版本設定校準。
-- 不想同步：取消勾選跟隨 YouTube Music，回到手動模式。網站不會操作實際音樂，也不會在手機自動偵測。
-- 擴充只讀取 music.youtube.com 的播放資訊，透過本機瀏覽器傳給你指定的 GitHub Pages 網頁；不需額外伺服器。網站會將歌名/歌手送 LRCLIB 搜尋。選用 AI 翻譯才會向設定的 Worker 傳送歌詞。
+```powershell
+keytool -genkeypair -v -keystore kotonoha.p12 -storetype PKCS12 -alias kotonoha -keyalg RSA -keysize 2048 -validity 10000
+```
 
-測試：JavaScript 語法檢查及模擬 DOM/歌詞 API 測試已通過；環境限制瀏覽器導航，尚未驗證真實 YouTube Music DOM、權限流程與實際 API 連線。初版擴充可能需依 YouTube Music 改版調整。
+3. 把金鑰檔轉成 Base64 複製到剪貼簿：
 
-## v0.3.1 假名修正
-覆蓋網站 index.html、app.js、style.css、kana-worker.js（sync.js 保持原版）。不需更新擴充功能。修正字典 URL 組合，加入備用 CDN、下載進度及重新標註。中文勾選只控制已有翻譯；尚未設定 AI 後端時，使用手動匯入或 optional-ai/SETUP.md 設定。
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\kotonoha.p12).Path)) | Set-Clipboard
+```
 
-## v0.3.2 多來源搜尋（包含 v0.3.1 假名修正）
-覆蓋 ZIP 內 6 個網站程式檔及 README.md，不需更新 v0.3 擴充功能。先查 LRCLIB，查不到同名同步歌詞時改查 LiriQo，再視情況查 lyrics.ovh 純文字。搜尋會送歌曲名與歌手到相應第三方 API；不送帳號、音訊或 API 金鑰。來源會顯示在結果與播放狀態。教室に青及 W/X/Y 有原唱名稱提示（只包含歌曲資訊，沒有內建歌詞）。若都沒有，使用外部歌詞連結，或自行匯入有權使用的歌詞；在自動模式匯入會記住對應的播放版本。純文字無時間戳，不會自動逐句高亮。翻唱仍可能需要校正時間軸。新來源及字典的真實網路連線尚未實測；語法與模擬測試已通過。
+4. 建議 repository 設 Private。GitHub Settings → Secrets and variables → Actions → New repository secret，建立 `KOTO_KEYSTORE_BASE64`（貼上剪貼簿），以及 `KOTO_STORE_PASSWORD`（步驟 2 的密碼）。不要把金鑰或密碼放入原始碼、commit、截圖。金鑰原檔及密碼請自己安全備份。剪貼簿清除。
+5. 將新版 `.github/workflows/build.yml` 覆蓋舊 workflow。執行 Run workflow，下載 artifact 裡的 app-debug.apk；它仍叫 debug 但若兩個 secret 都有設定，會使用固定的私人簽章。
+6. 後續每次用相同金鑰與更高 versionCode 編譯，就可正常覆蓋更新（除非 Android 另有安裝限制）。如果兩個 secrets 都未設定，仍可臨時測試，但不保證覆蓋更新。
 
-## v0.4 自動 AI 翻譯
-覆蓋新 ZIP 中的八個網站檔案（含新增 translate.js），不需更新擴充功能。翻譯後端另外下載，不需上傳 GitHub。請見獨立後端 ZIP 的 SETUP.md。新歌載入後防抖 1.5 秒再翻譯；已有任何手動翻譯時不自動覆蓋。AI 快取以完整逐句原文為鍵，可跨原唱與翻唱重用完全相同的歌詞，不受時間戳影響。切歌時正在處理的歌曲可完成並存入快取，不會覆蓋新歌；同時最多兩個請求，失敗需手動重試。預設不啟用付費自動翻譯。真實 Cloudflare / OpenAI 帳號部署及翻譯品質需要使用者測試。手機同步尚未實作。
+不要把固定簽章金鑰傳給朋友；只分享已簽 APK，朋友也需要允許通知存取及自行設定 AI（可不設定）。
 
-## v0.6 更新
-請先閱讀 UPDATE-v0.6.txt；其中包含新的翻譯模式、雲端快取與手機更新流程。
+原始碼及 XML/YAML 已檢查，尚未實際編譯或真機測試；固定簽章需 GitHub 實際建置驗證。不要卸載現有正常 App 直到新 APK 已成功建置且完成資料備份。

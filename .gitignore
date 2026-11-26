@@ -3,3 +3,8 @@
 local.properties
 *.jks
 *.keystore
+
+# Private signing keys
+*.p12
+*.jks
+*.keystore
