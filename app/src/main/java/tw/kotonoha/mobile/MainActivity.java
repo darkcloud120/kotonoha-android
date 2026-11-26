@@ -16,6 +16,10 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.ViewGroup;
+import android.view.Gravity;
+import android.widget.FrameLayout;
+import android.widget.PopupMenu;
+import android.graphics.drawable.GradientDrawable;
 import android.view.WindowManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -34,7 +38,7 @@ public final class MainActivity extends Activity {
     private static final String MUSIC = "com.google.android.apps.youtube.music";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WebView web;
-    private TextView status;
+    private TextView status; // detached diagnostic text, visible in menu
     private Button permission;
     private boolean running = false, ready = false;
     private ValueCallback<Uri[]> fileCallback;
@@ -58,16 +62,19 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(16,19,28));
         getWindow().setNavigationBarColor(Color.rgb(16,19,28));
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
+        FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.rgb(16,19,28));
-        LinearLayout tools = new LinearLayout(this);
-        permission = button("授權同步", () -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
-        tools.addView(permission, new LinearLayout.LayoutParams(0, -2, 1));
-        tools.addView(button("YT Music", this::openMusic), new LinearLayout.LayoutParams(0,-2,1));
-        tools.addView(button("重新整理", () -> { ready=false; web.loadUrl(SITE); }), new LinearLayout.LayoutParams(0,-2,1));
-        root.addView(tools);
-        status = new TextView(this); status.setTextColor(Color.rgb(183,165,255)); status.setTextSize(12);
-        status.setPadding(16, 2, 16, 8); status.setText("ことのは Android 0.5 · 等待授權"); root.addView(status);
+        status = new TextView(this);
+        status.setText("等待授權");
+        permission = button("⋮", () -> showMenu());
+        permission.setContentDescription("手機同步選單");
+        permission.setTextSize(23); permission.setPadding(0,0,0,0);
+        permission.setMinWidth(0); permission.setMinimumWidth(0);
+        permission.setMinHeight(0); permission.setMinimumHeight(0);
+        permission.setTextColor(Color.rgb(219,207,255));
+        GradientDrawable menuBg = new GradientDrawable();
+        menuBg.setColor(Color.rgb(36,34,51)); menuBg.setCornerRadius(dp(12));
+        permission.setBackground(menuBg);
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(16,19,28));
         web.getSettings().setJavaScriptEnabled(true);
@@ -102,16 +109,33 @@ public final class MainActivity extends Activity {
                 catch (Exception ex) { fileCallback=null; return false; }
             }
         });
-        root.addView(web,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));
+        root.addView(web,new FrameLayout.LayoutParams(-1,-1));
+        FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(dp(38),dp(38),Gravity.TOP|Gravity.END);
+        mp.setMargins(0,dp(9),dp(9),0);root.addView(permission,mp);
         setContentView(root);
         web.loadUrl(SITE);
+        if(!granted()) new android.app.AlertDialog.Builder(this).setTitle("啟用音樂同步").setMessage("授予通知存取權限，才能讀取 YouTube Music 的播放資訊。也可稍後從右上角選單授權。").setPositiveButton("授權",(d,w)->startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))).setNegativeButton("稍後",null).show();
+    }
+    private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
+    private void showMenu(){
+        PopupMenu menu=new PopupMenu(this,permission);
+        menu.getMenu().add(0,1,0,granted()?"同步權限：已授權":"授權同步");
+        menu.getMenu().add(0,2,1,"開啟 YouTube Music");
+        menu.getMenu().add(0,3,2,"重新整理歌詞網站");
+        menu.getMenu().add(0,4,3,"同步狀態");
+        menu.setOnMenuItemClickListener(item->{switch(item.getItemId()){
+            case 1:startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));return true;
+            case 2:openMusic();return true;
+            case 3:ready=false;web.loadUrl(SITE);return true;
+            case 4:new android.app.AlertDialog.Builder(this).setTitle("同步狀態").setMessage(status.getText()).setPositiveButton("關閉",null).show();return true;
+            default:return false;}});menu.show();
     }
     private void decorate() {
         // Reuse the existing v0.4 page; no privileged JS bridge or new server.
         web.evaluateJavascript("(()=>{if(location.origin!=="+JSONObject.quote("https://"+HOST)+"||!['/kotonoha/','/kotonoha/index.html','/kotonoha'].includes(location.pathname))return;"
             +"if(document.getElementById('android-style'))return;const s=document.createElement('style');s.id='android-style';s.textContent="
-            +JSONObject.quote("@media(max-width:720px){aside>.panel:nth-child(2){order:2} .lyrics{height:56vh} header{padding:10px} .player{padding:12px} }")
-            +";document.head.append(s);const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android v0.5';})()",null);
+            +JSONObject.quote("header{padding-right:56px!important} @media(max-width:720px){aside>.panel:nth-child(2){order:2} header{padding-top:10px} }")
+            +";document.head.append(s);const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android v0.6';})()",null);
     }
     private void openMusic() {
         Intent intent=getPackageManager().getLaunchIntentForPackage(MUSIC);
@@ -133,8 +157,8 @@ public final class MainActivity extends Activity {
         return fallback;
     }
     private void poll() {
-        if(!granted()){permission.setText("授權同步");status.setText("尚未授權：點上方授權同步，允許通知存取。");return;}
-        permission.setText("同步已授權");
+        if(!granted()){permission.setText("⋮");status.setText("尚未授權：點上方授權同步，允許通知存取。");return;}
+        permission.setText("⋮");
         try {
             MediaSessionManager manager=getSystemService(MediaSessionManager.class);
             MediaController c=choose(manager.getActiveSessions(new ComponentName(this,MediaAccessService.class)));
