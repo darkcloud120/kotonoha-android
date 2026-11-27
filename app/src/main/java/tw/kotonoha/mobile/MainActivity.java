@@ -90,7 +90,7 @@ public final class MainActivity extends Activity {
             @Override public boolean onJsPrompt(WebView v,String url,String message,String defaultValue,android.webkit.JsPromptResult result){
                 if(!trusted(url)||!trusted(v.getUrl())){result.cancel();return true;}
                 if("kotonoha-native-menu-v1".equals(message)){result.confirm("ok");showMenu();return true;}
-                if("kotonoha-native-seek-v1".equals(message)){result.confirm(seekMusic(defaultValue)?"ok":"unsupported");return true;}
+                if("kotonoha-native-seek-v1".equals(message)||"kotonoha-native-transport-v1".equals(message)){result.confirm(seekMusic(defaultValue)?"ok":"unsupported");return true;}
                 return super.onJsPrompt(v,url,message,defaultValue,result);
             }
             @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams params) {
@@ -118,16 +118,20 @@ public final class MainActivity extends Activity {
     }
     private void decorate() {
         web.evaluateJavascript("(()=>{if(location.origin!=="+JSONObject.quote("https://"+HOST)+"||!['/kotonoha/','/kotonoha/index.html','/kotonoha'].includes(location.pathname))return;"
-            +"document.documentElement.dataset.androidSeek='1';const b=document.getElementById('native-menu');if(b)b.hidden=false;const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android 1.0 RC4';})()",null);
+            +"document.documentElement.dataset.androidSeek='1';const b=document.getElementById('native-menu');if(b)b.hidden=false;const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android 1.0 RC5';})()",null);
     }
     private boolean seekMusic(String raw){
         if(!granted()||raw==null||raw.length()>2500)return false;
         try{JSONObject req=new JSONObject(raw);MediaSessionManager manager=getSystemService(MediaSessionManager.class);
             MediaController c=choose(manager.getActiveSessions(new ComponentName(this,MediaAccessService.class)));if(c==null)return false;
-            MediaMetadata m=c.getMetadata();PlaybackState state=c.getPlaybackState();if(m==null||state==null||(state.getActions()&PlaybackState.ACTION_SEEK_TO)==0)return false;
+            MediaMetadata m=c.getMetadata();PlaybackState state=c.getPlaybackState();if(m==null||state==null)return false;
             String title=str(m,MediaMetadata.METADATA_KEY_TITLE);if(title.isEmpty())title=str(m,MediaMetadata.METADATA_KEY_DISPLAY_TITLE);
             String artist=str(m,MediaMetadata.METADATA_KEY_ARTIST);if(artist.isEmpty())artist=str(m,MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE);if(artist.isEmpty())artist=str(m,MediaMetadata.METADATA_KEY_ALBUM_ARTIST);
             if(!title.equals(req.optString("title"))||!artist.equals(req.optString("artist"))||!str(m,MediaMetadata.METADATA_KEY_MEDIA_ID).equals(req.optString("videoId")))return false;
+            String action=req.optString("action","seek");long actions=state.getActions();
+            if("play".equals(action)){if((actions&(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PLAY_PAUSE))==0)return false;c.getTransportControls().play();return true;}
+            if("pause".equals(action)){if((actions&(PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_PLAY_PAUSE))==0)return false;c.getTransportControls().pause();return true;}
+            if(!"seek".equals(action)||(actions&PlaybackState.ACTION_SEEK_TO)==0)return false;
             double seconds=req.optDouble("position",-1);long dur=m.getLong(MediaMetadata.METADATA_KEY_DURATION);
             if(!Double.isFinite(seconds)||seconds<0||dur<=0||seconds*1000>dur+500)return false;
             c.getTransportControls().seekTo(Math.min(dur,Math.round(seconds*1000)));return true;
@@ -180,6 +184,7 @@ public final class MainActivity extends Activity {
             payload.put("videoId",str(m,MediaMetadata.METADATA_KEY_MEDIA_ID));
             payload.put("position",position/1000.0);payload.put("duration",duration/1000.0);
             payload.put("playing",isPlaying && raw>=0);payload.put("speed",speed);
+            JSONObject controls=new JSONObject();long actions=s.getActions();controls.put("seek",duration>0&&(actions&PlaybackState.ACTION_SEEK_TO)!=0);controls.put("play",(actions&(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PLAY_PAUSE))!=0);controls.put("pause",(actions&(PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_PLAY_PAUSE))!=0);payload.put("controls",controls);
             payload.put("observedAt",System.currentTimeMillis());payload.put("ad",false);
             JSONObject msg=new JSONObject();msg.put("type","kotonoha-extension-v03");msg.put("state",payload);
             String js="if(location.origin==="+JSONObject.quote("https://"+HOST)+"&&['/kotonoha/','/kotonoha/index.html','/kotonoha'].includes(location.pathname))window.postMessage(JSON.parse("+JSONObject.quote(msg.toString())+"),location.origin);";
