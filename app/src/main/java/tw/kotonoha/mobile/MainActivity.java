@@ -39,7 +39,7 @@ public final class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WebView web;
     private TextView status; // detached diagnostic text, visible in menu
-    private Button permission;
+    
     private boolean running = false, ready = false;
     private ValueCallback<Uri[]> fileCallback;
     private final int PICK_FILE = 51;
@@ -52,11 +52,6 @@ public final class MainActivity extends Activity {
                 && (u.getPort() == -1 || u.getPort() == 443) && u.getUserInfo() == null
                 && ("/kotonoha/".equals(path) || "/kotonoha/index.html".equals(path) || "/kotonoha".equals(path));
     }
-    private Button button(String label, Runnable action) {
-        Button b = new Button(this); b.setText(label); b.setAllCaps(false);
-        b.setTextSize(12); b.setOnClickListener(v -> action.run());
-        return b;
-    }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(Color.rgb(16,19,28));
@@ -66,15 +61,6 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(Color.rgb(16,19,28));
         status = new TextView(this);
         status.setText("等待授權");
-        permission = button("⋮", () -> showMenu());
-        permission.setContentDescription("手機同步選單");
-        permission.setTextSize(23); permission.setPadding(0,0,0,0);
-        permission.setMinWidth(0); permission.setMinimumWidth(0);
-        permission.setMinHeight(0); permission.setMinimumHeight(0);
-        permission.setTextColor(Color.rgb(219,207,255));
-        GradientDrawable menuBg = new GradientDrawable();
-        menuBg.setColor(Color.rgb(36,34,51)); menuBg.setCornerRadius(dp(12));
-        permission.setBackground(menuBg);
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(16,19,28));
         web.getSettings().setJavaScriptEnabled(true);
@@ -101,6 +87,12 @@ public final class MainActivity extends Activity {
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onJsPrompt(WebView v,String url,String message,String defaultValue,android.webkit.JsPromptResult result){
+                if(!trusted(url)||!trusted(v.getUrl())){result.cancel();return true;}
+                if("kotonoha-native-menu-v1".equals(message)){result.confirm("ok");showMenu();return true;}
+                if("kotonoha-native-seek-v1".equals(message)){result.confirm(seekMusic(defaultValue)?"ok":"unsupported");return true;}
+                return super.onJsPrompt(v,url,message,defaultValue,result);
+            }
             @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams params) {
                 if (!trusted(v.getUrl())) return false;
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
@@ -110,32 +102,36 @@ public final class MainActivity extends Activity {
             }
         });
         root.addView(web,new FrameLayout.LayoutParams(-1,-1));
-        FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(dp(38),dp(38),Gravity.TOP|Gravity.END);
-        mp.setMargins(0,dp(9),dp(9),0);root.addView(permission,mp);
         setContentView(root);
         web.loadUrl(SITE);
         if(!granted()) new android.app.AlertDialog.Builder(this).setTitle("啟用音樂同步").setMessage("授予通知存取權限，才能讀取 YouTube Music 的播放資訊。也可稍後從右上角選單授權。").setPositiveButton("授權",(d,w)->startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))).setNegativeButton("稍後",null).show();
     }
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private void showMenu(){
-        PopupMenu menu=new PopupMenu(this,permission);
-        menu.getMenu().add(0,1,0,granted()?"同步權限：已授權":"授權同步");
-        menu.getMenu().add(0,2,1,"開啟 YouTube Music");
-        menu.getMenu().add(0,3,2,"重新整理歌詞網站");
-        menu.getMenu().add(0,4,3,"同步狀態");
-        menu.setOnMenuItemClickListener(item->{switch(item.getItemId()){
-            case 1:startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));return true;
-            case 2:openMusic();return true;
-            case 3:ready=false;web.loadUrl(SITE);return true;
-            case 4:new android.app.AlertDialog.Builder(this).setTitle("同步狀態").setMessage(status.getText()).setPositiveButton("關閉",null).show();return true;
-            default:return false;}});menu.show();
+        String[] choices={granted()?"同步權限：已授權":"授權同步","開啟 YouTube Music","重新整理歌詞網站","同步狀態"};
+        new android.app.AlertDialog.Builder(this).setTitle("手機同步").setItems(choices,(d,i)->{switch(i){
+            case 0:startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));break;
+            case 1:openMusic();break;
+            case 2:ready=false;web.loadUrl(SITE);break;
+            case 3:new android.app.AlertDialog.Builder(this).setTitle("同步狀態").setMessage(status.getText()).setPositiveButton("關閉",null).show();break;
+        }}).show();
     }
     private void decorate() {
-        // Reuse the existing v0.4 page; no privileged JS bridge or new server.
         web.evaluateJavascript("(()=>{if(location.origin!=="+JSONObject.quote("https://"+HOST)+"||!['/kotonoha/','/kotonoha/index.html','/kotonoha'].includes(location.pathname))return;"
-            +"if(document.getElementById('android-style'))return;const s=document.createElement('style');s.id='android-style';s.textContent="
-            +JSONObject.quote("header{padding-right:56px!important} body.focus-mode main{padding-top:48px} body.focus-mode .player{height:calc(100dvh - 56px)} @media(max-width:720px){aside>.panel:nth-child(2){order:2} header{padding-top:10px} }")
-            +";document.head.append(s);const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android 1.0 RC1';})()",null);
+            +"document.documentElement.dataset.androidSeek='1';const b=document.getElementById('native-menu');if(b)b.hidden=false;const h=document.querySelector('aside>.panel h2');if(h)h.textContent='手機自動同步';const brand=document.querySelector('.brand small');if(brand)brand.textContent='KOTONOHA / Android 1.0 RC4';})()",null);
+    }
+    private boolean seekMusic(String raw){
+        if(!granted()||raw==null||raw.length()>2500)return false;
+        try{JSONObject req=new JSONObject(raw);MediaSessionManager manager=getSystemService(MediaSessionManager.class);
+            MediaController c=choose(manager.getActiveSessions(new ComponentName(this,MediaAccessService.class)));if(c==null)return false;
+            MediaMetadata m=c.getMetadata();PlaybackState state=c.getPlaybackState();if(m==null||state==null||(state.getActions()&PlaybackState.ACTION_SEEK_TO)==0)return false;
+            String title=str(m,MediaMetadata.METADATA_KEY_TITLE);if(title.isEmpty())title=str(m,MediaMetadata.METADATA_KEY_DISPLAY_TITLE);
+            String artist=str(m,MediaMetadata.METADATA_KEY_ARTIST);if(artist.isEmpty())artist=str(m,MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE);if(artist.isEmpty())artist=str(m,MediaMetadata.METADATA_KEY_ALBUM_ARTIST);
+            if(!title.equals(req.optString("title"))||!artist.equals(req.optString("artist"))||!str(m,MediaMetadata.METADATA_KEY_MEDIA_ID).equals(req.optString("videoId")))return false;
+            double seconds=req.optDouble("position",-1);long dur=m.getLong(MediaMetadata.METADATA_KEY_DURATION);
+            if(!Double.isFinite(seconds)||seconds<0||dur<=0||seconds*1000>dur+500)return false;
+            c.getTransportControls().seekTo(Math.min(dur,Math.round(seconds*1000)));return true;
+        }catch(Exception ex){return false;}
     }
     private void openMusic() {
         Intent intent=getPackageManager().getLaunchIntentForPackage(MUSIC);
@@ -157,8 +153,8 @@ public final class MainActivity extends Activity {
         return fallback;
     }
     private void poll() {
-        if(!granted()){permission.setText("⋮");status.setText("尚未授權：點上方授權同步，允許通知存取。");return;}
-        permission.setText("⋮");
+        if(!granted()){status.setText("尚未授權：點右上角選單，允許通知存取。");return;}
+        
         try {
             MediaSessionManager manager=getSystemService(MediaSessionManager.class);
             MediaController c=choose(manager.getActiveSessions(new ComponentName(this,MediaAccessService.class)));
